@@ -40,20 +40,26 @@ const mainQuestion = [
 
 function processChoice(option) {
   if (option === "View All Departments") {
-    department.viewAll(db);
+    department.viewAll(db); // done
     promptQuestion();
   } else if (option === "Add Department") {
-    department.add(db);
+    department.addDepPrompt(db); //done
+    promptQuestion();
   } else if (option === "View All Employee") {
-    employee.viewAll(db);
+    employee.viewAll(db); // done
+    promptQuestion();
   } else if (option === "Add Employee") {
-    employee.add(db);
+    employee.addEmployeePrompt(db); // done
+    promptQuestion();
   } else if (option === "Update Employee Role") {
-    employee.updateEmployeeRole(db);
+    employee.updateEmployeePrompt(db); // -----
+    promptQuestion();
   } else if (option === "View All Roles") {
-    role.viewAll(db);
+    role.viewAll(db); // done
+    promptQuestion();
   } else if (option === "Add Role") {
-    role.add(db);
+    role.addRolePrompt(db); //done
+    promptQuestion();
   } else if (option === "Quit") {
     console.log("Program ended.");
     process.exit();

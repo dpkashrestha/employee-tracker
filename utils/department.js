@@ -6,7 +6,7 @@ const departmentQuestions = [
   {
     type: "input",
     message: "What is the name of the department?",
-    name: "textColor",
+    name: "depName",
   },
 ];
 
@@ -15,8 +15,34 @@ function viewAll(db) {
     logAsTable(results);
   });
 }
-function add(db) {
-  console.log("addcall");
+
+async function getDepartmentChoices(db) {
+  const [rows] = await db.promise().query('SELECT id, dep_name FROM department');
+    // Map the database results to Inquirer choices format
+    const choices = rows.map((item) => ({
+      value: item.id,
+      name: item.dep_name,
+    }));
+
+    return choices;
+}
+
+function addDepPrompt(db) {
+  inquirer.prompt(departmentQuestions).then((response) => {
+    addDep(db, response.depName);
+  });
+}
+
+function addDep(db, depName) {
+  db.query(
+    `INSERT INTO department (dep_name)
+  VALUES
+      (?)`,
+    depName,
+    function (err, results) {
+     console.log("Department added.");
+    }
+  );
 }
 
 function logAsTable(results) {
@@ -34,5 +60,6 @@ function logAsTable(results) {
 
 module.exports = {
   viewAll,
-  add,
+  addDepPrompt,
+  getDepartmentChoices,
 };
