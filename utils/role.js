@@ -1,13 +1,11 @@
 const inquirer = require("inquirer");
-const mysql = require("mysql2");
 const Table = require("cli-table3");
 const department = require("./department.js");
 
-function viewAll(db) {
-  db.query(`SELECT role.id, role.title, department.dep_name, role.salary FROM role
-    JOIN department ON department.id = role.department_id`, function (err, results) {
-    logAsTable(results);
-  });
+async function viewAll(db) {
+  const [rows] = await db.promise().query(`SELECT role.id, role.title, department.dep_name, role.salary FROM role
+    JOIN department ON department.id = role.department_id`);
+  logAsTable(rows);
 }
 
 async function getRoleChoices(db) {
@@ -44,20 +42,18 @@ async function addRolePrompt(db) {
     },
   ];
 
-  inquirer.prompt(addRoleQuestions).then((response) => {
-    addRole(db, response.roleTitle, response.roleSalary, response.roleDepId);
+  await inquirer.prompt(addRoleQuestions).then(async (response) => {
+    await addRole(db, response.roleTitle, response.roleSalary, response.roleDepId);
   });
 }
 
-function addRole(db,roleTitle, roleSalary, roleDepId) {
-  db.query(
+async function addRole(db,roleTitle, roleSalary, roleDepId) {
+  await db.promise().query(
     `INSERT INTO role (title, salary, department_id)
 VALUES
-    (?,?,?)`, [roleTitle, roleSalary, roleDepId], 
-    function (err, results) {
-      console.log("Role added.");
-     }
+    (?,?,?)`, [roleTitle, roleSalary, roleDepId]
   );
+  console.log("Role added.");
 }
 
 function logAsTable(results) {

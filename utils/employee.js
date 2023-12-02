@@ -1,9 +1,9 @@
 const inquirer = require("inquirer");
-const mysql = require("mysql2");
 const Table = require("cli-table3");
 const role = require("./role.js");
+const department = require("./department.js");
 
-function viewAll(db) {
+async function viewAll(db) {
   const queryString = `
   SELECT
     employee.id,
@@ -20,18 +20,15 @@ function viewAll(db) {
     LEFT JOIN employee e2 ON e2.id = employee.manager_id
 `;
 
-  db.query(queryString, function (err, results) {
-    console.log(results);
-    logAsTable(results);
-  });
+  const [rows] = await db.promise().query(queryString);
+  logAsTable(rows);
 }
 
 async function getEmployeeChoices(db) {
-  const [rows] = await db
-    .promise()
-    .query(
-      `SELECT id, concat(first_name, ' ', last_name) as employeeName FROM employee`
-    );
+  const queryString = `SELECT id, concat(first_name, ' ', last_name) as employeeName FROM employee`;
+
+  const [rows] = await db.promise().query(queryString);
+  
   // Map the database results to Inquirer choices format
   const choices = rows.map((item) => ({
     value: item.id,
@@ -41,6 +38,21 @@ async function getEmployeeChoices(db) {
   return choices;
 }
 
+async function getManagerChoices(db) {
+  const queryString = `SELECT id, concat(first_name, ' ', last_name) as managerName FROM employee`;
+  
+  const [rows] = await db.promise().query(queryString);
+  
+  // Map the database results to Inquirer choices format
+  const choices = rows.map((item) => ({
+    value: item.id,
+    name: item.managerName,
+  }));
+
+  return choices;
+}
+
+// Prompt questions to add employee
 async function addEmployeePrompt(db) {
   const managerChoices = await getEmployeeChoices(db);
 
@@ -49,7 +61,7 @@ async function addEmployeePrompt(db) {
   const addEmployeeQuestions = [
     {
       type: "input",
-      message: "What is the employee's first name??",
+      message: "What is the employee's first name?",
       name: "firstName",
     },
     {
@@ -67,12 +79,12 @@ async function addEmployeePrompt(db) {
       type: "list",
       message: "Who is the employee's manager?",
       name: "managerId",
-      choices: [...managerChoices],
+      choices: ["None", ...managerChoices],
     },
   ];
 
-  inquirer.prompt(addEmployeeQuestions).then((response) => {
-    addEmployee(
+  await inquirer.prompt(addEmployeeQuestions).then(async (response) => {
+    await addEmployee(
       db,
       response.firstName,
       response.lastName,
@@ -82,16 +94,29 @@ async function addEmployeePrompt(db) {
   });
 }
 
-function addEmployee(db, firstName, lastName, employeeRole, employeeManager) {
-  db.query(
-    `INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUES (?,?,?,?)`,
-    [firstName, lastName, employeeRole, employeeManager],
-    function (err, results) {
-      console.log("Employee added.");
-    }
-  );
+// Query to add employee
+async function addEmployee(
+  db,
+  firstName,
+  lastName,
+  employeeRole,
+  employeeManager
+) {
+
+  if (employeeManager === 'None') {
+    employeeManager = null;
+  }
+
+  await db
+    .promise()
+    .query(
+      `INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUES (?,?,?,?)`,
+      [firstName, lastName, employeeRole, employeeManager]
+    );
+  console.log("Employee added.");
 }
 
+// Prompt questions to update employee
 async function updateEmployeePrompt(db) {
   const employeeChoices = await getEmployeeChoices(db);
 
@@ -112,21 +137,143 @@ async function updateEmployeePrompt(db) {
     },
   ];
 
-  inquirer.prompt(updateEmployeeQuestions).then((response) => {
-    updateEmployee(db, response.roleId, response.empId);
+  await inquirer.prompt(updateEmployeeQuestions).then(async (response) => {
+    await updateEmployee(db, response.roleId, response.empId);
   });
 }
 
-function updateEmployee(db, roleId, employeeId) {
-  db.query(
-    `UPDATE employee SET role_id=? WHERE id = ?`,
-    [roleId, employeeId],
-    function (err, results) {
-      console.log("Employee updated.");
-    }
-  );
+//Query to update employee
+async function updateEmployee(db, roleId, employeeId) {
+  await db
+    .promise()
+    .query(`UPDATE employee SET role_id=? WHERE id = ?`, [roleId, employeeId]);
+  console.log("Employee updated.");
 }
 
+// Prompt questions to update employee managers
+async function updateEmployeeManagerPrompt(db) {
+  const employeeChoices = await getEmployeeChoices(db);
+
+  const managerChoices = await getManagerChoices(db);
+
+  const updateEmployeeManagerQuestions = [
+    {
+      type: "list",
+      message: "Which employee's manager do you want to update?",
+      name: "empId",
+      choices: [...employeeChoices],
+    },
+    {
+      type: "list",
+      message: "Which manager do you want to assign the selected employee?",
+      name: "managerId",
+      choices: [...managerChoices],
+    },
+  ];
+
+  await inquirer
+    .prompt(updateEmployeeManagerQuestions)
+    .then(async (response) => {
+      await updateEmployeeManager(db, response.empId, response.managerId);
+    });
+}
+
+//Query to update employee's manager
+async function updateEmployeeManager(db, employeeId, managerId) {
+  await db
+    .promise()
+    .query(`UPDATE employee SET manager_id=? WHERE id = ?`, [
+      managerId,
+      employeeId,
+    ]);
+  console.log("Employee Manager updated.");
+}
+
+// View employees by manager
+async function viewEmployeeByManagerPrompt(db) {
+  const employeeChoices = await getEmployeeChoices(db);
+
+  const viewEmployeeByManagerQuestions = [
+    {
+      type: "list",
+      message: "Which manager do you want to view the employees for?",
+      name: "managerId",
+      choices: [...employeeChoices],
+    },
+  ];
+
+  await inquirer
+    .prompt(viewEmployeeByManagerQuestions)
+    .then(async (response) => {
+      await viewEmployeeByManager(db, response.managerId);
+    });
+}
+
+async function viewEmployeeByManager(db, managerId) {
+  const queryString = `
+      SELECT
+        employee.id,
+        employee.first_name,
+        employee.last_name,
+        role.title,
+        department.dep_name,
+        role.salary,
+        CONCAT(e2.first_name, ' ', e2.last_name) as manager
+      FROM
+        employee
+        JOIN role ON role.id = employee.role_id
+        JOIN department ON department.id = role.department_id
+        LEFT JOIN employee e2 ON e2.id = employee.manager_id
+      WHERE
+        employee.manager_id = ?
+    `;
+
+  const [rows] = await db.promise().query(queryString, managerId);
+  logAsTable(rows);
+}
+
+// View employees by Department
+async function viewEmployeeByDepartmentPrompt(db) {
+  const departmentChoices = await department.getDepartmentChoices(db);
+
+  const queryString = [
+    {
+      type: "list",
+      message: "Which Department do you want to view the employees for?",
+      name: "depId",
+      choices: [...departmentChoices],
+    },
+  ];
+
+  await inquirer.prompt(queryString).then(async (response) => {
+    await viewEmployeeByDepartment(db, response.depId);
+  });
+}
+
+async function viewEmployeeByDepartment(db, depId) {
+  const queryString = `
+      SELECT
+        employee.id,
+        employee.first_name,
+        employee.last_name,
+        role.title,
+        department.dep_name,
+        role.salary,
+        CONCAT(e2.first_name, ' ', e2.last_name) as manager
+      FROM
+        employee
+        JOIN role ON role.id = employee.role_id
+        JOIN department ON department.id = role.department_id
+        LEFT JOIN employee e2 ON e2.id = employee.manager_id
+      WHERE
+        department.id = ?
+    `;
+
+  const [rows] = await db.promise().query(queryString, depId);
+  logAsTable(rows);
+}
+
+// Function to display data inthe table
 function logAsTable(results) {
   const table = new Table({
     head: [
@@ -149,7 +296,7 @@ function logAsTable(results) {
       item.title,
       item.dep_name,
       item.salary,
-      item.manager || "",
+      item.manager || "<Not Assigned>",
     ]);
   });
 
@@ -160,4 +307,8 @@ module.exports = {
   viewAll,
   addEmployeePrompt,
   updateEmployeePrompt,
+  updateEmployeeManagerPrompt,
+  getManagerChoices,
+  viewEmployeeByManagerPrompt,
+  viewEmployeeByDepartmentPrompt,
 };

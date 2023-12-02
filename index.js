@@ -33,37 +33,55 @@ const mainQuestion = [
       "View All Roles",
       "Add Role",
       "Update Employee Role",
+      "Update Employee's Manager",
+      "View Employees By Manager",
+      "View Employees By Department",
+      "Delete department",
+      "Delete role",
+      "Delete employee",
+      "Budget",
       "Quit",
     ],
   },
 ];
 
-function processChoice(option) {
+async function processChoice(option) {
   if (option === "View All Departments") {
-    department.viewAll(db); // done
-    promptQuestion();
+   await department.viewAll(db); // View all department
+    // promptQuestion();
   } else if (option === "Add Department") {
-    department.addDepPrompt(db); //done
-    promptQuestion();
+    await department.addDepPrompt(db); // Add department
+    // promptQuestion();
   } else if (option === "View All Employee") {
-    employee.viewAll(db); // done
-    promptQuestion();
+    await employee.viewAll(db); // View All Employee
+    // promptQuestion();
   } else if (option === "Add Employee") {
-    employee.addEmployeePrompt(db); // done
-    promptQuestion();
+    await employee.addEmployeePrompt(db); // Add Employee
+    // promptQuestion();
   } else if (option === "Update Employee Role") {
-    employee.updateEmployeePrompt(db); // -----
-    promptQuestion();
+    await employee.updateEmployeePrompt(db); // Update Employee Role
+    // promptQuestion();
+  } else if (option === "Update Employee's Manager") {
+    await employee.updateEmployeeManagerPrompt(db); // Update employee's manager
+    // promptQuestion(); 
+  } else if (option === "View Employees By Manager") {
+    await employee.viewEmployeeByManagerPrompt(db); // View employees by manager
+    // promptQuestion();
+  } else if (option === "View Employees By Department") {
+    await employee.viewEmployeeByDepartmentPrompt(db); // View employees by Department
+    // promptQuestion();     
   } else if (option === "View All Roles") {
-    role.viewAll(db); // done
-    promptQuestion();
+    await role.viewAll(db); // View All Roles
+    // promptQuestion();
   } else if (option === "Add Role") {
-    role.addRolePrompt(db); //done
-    promptQuestion();
+    await role.addRolePrompt(db); // Add Role
+    // promptQuestion();
   } else if (option === "Quit") {
-    console.log("Program ended.");
+    console.log("Program ended."); // Quit Program
     process.exit();
   }
+
+  promptQuestion();
 }
 
 function promptQuestion() {

@@ -1,5 +1,4 @@
 const inquirer = require("inquirer");
-const mysql = require("mysql2");
 const Table = require("cli-table3");
 
 const departmentQuestions = [
@@ -10,10 +9,9 @@ const departmentQuestions = [
   },
 ];
 
-function viewAll(db) {
-  db.query("SELECT * FROM department", function (err, results) {
-    logAsTable(results);
-  });
+async function viewAll(db) {
+  const [rows] = await db.promise().query('SELECT * FROM department');
+  logAsTable(rows);
 }
 
 async function getDepartmentChoices(db) {
@@ -27,22 +25,20 @@ async function getDepartmentChoices(db) {
     return choices;
 }
 
-function addDepPrompt(db) {
-  inquirer.prompt(departmentQuestions).then((response) => {
-    addDep(db, response.depName);
+async function addDepPrompt(db) {
+  await inquirer.prompt(departmentQuestions).then(async (response) => {
+    await addDep(db, response.depName);
   });
 }
 
-function addDep(db, depName) {
-  db.query(
+async function addDep(db, depName) {
+   await db.promise().query(
     `INSERT INTO department (dep_name)
   VALUES
       (?)`,
-    depName,
-    function (err, results) {
-     console.log("Department added.");
-    }
+    depName
   );
+  console.log("Department added.");
 }
 
 function logAsTable(results) {
