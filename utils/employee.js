@@ -28,7 +28,7 @@ async function getEmployeeChoices(db) {
   const queryString = `SELECT id, concat(first_name, ' ', last_name) as employeeName FROM employee`;
 
   const [rows] = await db.promise().query(queryString);
-  
+
   // Map the database results to Inquirer choices format
   const choices = rows.map((item) => ({
     value: item.id,
@@ -40,9 +40,9 @@ async function getEmployeeChoices(db) {
 
 async function getManagerChoices(db) {
   const queryString = `SELECT id, concat(first_name, ' ', last_name) as managerName FROM employee`;
-  
+
   const [rows] = await db.promise().query(queryString);
-  
+
   // Map the database results to Inquirer choices format
   const choices = rows.map((item) => ({
     value: item.id,
@@ -102,8 +102,7 @@ async function addEmployee(
   employeeRole,
   employeeManager
 ) {
-
-  if (employeeManager === 'None') {
+  if (employeeManager === "None") {
     employeeManager = null;
   }
 
@@ -113,11 +112,12 @@ async function addEmployee(
       `INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUES (?,?,?,?)`,
       [firstName, lastName, employeeRole, employeeManager]
     );
-  console.log("Employee added.");
+
+  prettyLog("Employee added.");
 }
 
 // Prompt questions to update employee
-async function updateEmployeePrompt(db) {
+async function updateEmployeeRolePrompt(db) {
   const employeeChoices = await getEmployeeChoices(db);
 
   const roleChoices = await role.getRoleChoices(db);
@@ -143,11 +143,12 @@ async function updateEmployeePrompt(db) {
 }
 
 //Query to update employee
-async function updateEmployee(db, roleId, employeeId) {
+async function updateEmployeeRole(db, roleId, employeeId) {
   await db
     .promise()
     .query(`UPDATE employee SET role_id=? WHERE id = ?`, [roleId, employeeId]);
-  console.log("Employee updated.");
+
+  prettyLog("Employee Role updated.");
 }
 
 // Prompt questions to update employee managers
@@ -186,7 +187,7 @@ async function updateEmployeeManager(db, employeeId, managerId) {
       managerId,
       employeeId,
     ]);
-  console.log("Employee Manager updated.");
+  prettyLog("Employee Manager updated.");
 }
 
 // View employees by manager
@@ -273,7 +274,31 @@ async function viewEmployeeByDepartment(db, depId) {
   logAsTable(rows);
 }
 
-// Function to display data inthe table
+// Prompt questions to delete Employee
+
+async function deleteEmployeePrompt(db) {
+  const employeeChoices = await getEmployeeChoices(db);
+
+  const deleteEmployeeQuestions = [
+    {
+      type: "list",
+      message: "Which Employee you want to delete?",
+      name: "employeeId",
+      choices: [...employeeChoices],
+    },
+  ];
+
+  await inquirer.prompt(deleteEmployeeQuestions).then(async (response) => {
+    await deleteEmployee(db, response.employeeId);
+  });
+}
+// Query to delete Employee
+async function deleteEmployee(db, empId) {
+  await db.promise().query(`DELETE from Employee where id = ?`, empId);
+  prettyLog("Employee deleted.");
+}
+
+// Function to display data in the table
 function logAsTable(results) {
   const table = new Table({
     head: [
@@ -300,15 +325,22 @@ function logAsTable(results) {
     ]);
   });
 
-  console.log("\n" + table.toString());
+  console.log("\n" + table.toString() + "\n");
+}
+
+function prettyLog(message) {
+  console.log("\n\n===============");
+  console.log(message);
+  console.log("================\n\n");
 }
 
 module.exports = {
   viewAll,
   addEmployeePrompt,
-  updateEmployeePrompt,
+  updateEmployeeRolePrompt,
   updateEmployeeManagerPrompt,
   getManagerChoices,
   viewEmployeeByManagerPrompt,
   viewEmployeeByDepartmentPrompt,
+  deleteEmployeePrompt,
 };
