@@ -25,11 +25,10 @@ Employee Tracker is a CMS (Content Management System) to manage a company's empl
 
 
 ## Screenshot
-
-
+<img width="613" alt="employee-tracker" src="https://github.com/dpkashrestha/employee-tracker/assets/142865374/2f5499ec-8427-40c3-8100-9bcda5191d8f">
 
 ## Video
-
+https://drive.google.com/file/d/1XlwTBJTgNtOBiN0bFFVAqw1k-1YwMYoG/view
 
 ## License 
 
