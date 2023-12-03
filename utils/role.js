@@ -1,16 +1,11 @@
 const inquirer = require("inquirer");
-const Table = require("cli-table3");
 const department = require("./department.js");
+const logger = require("./logger.js");
 
-async function viewAll(db) {
-  const [rows] = await db.promise()
-    .query(`SELECT role.id, role.title, department.dep_name, role.salary FROM role
-    JOIN department ON department.id = role.department_id`);
-  logAsTable(rows);
-}
-
+// Function to build choice list for roles for prompt questions
 async function getRoleChoices(db) {
   const [rows] = await db.promise().query("SELECT id, title FROM role");
+
   // Map the database results to Inquirer choices format
   const choices = rows.map((item) => ({
     value: item.id,
@@ -20,7 +15,15 @@ async function getRoleChoices(db) {
   return choices;
 }
 
-// Prompt questions to add role
+// View all roles functionality
+async function viewAll(db) {
+  const [rows, fields] = await db.promise()
+    .query(`SELECT role.id, role.title, department.dep_name, role.salary FROM role
+    JOIN department ON department.id = role.department_id`);
+  logger.logAsTable(rows, fields);
+}
+
+// Prompts to add role
 async function addRolePrompt(db) {
   const depChoices = await department.getDepartmentChoices(db);
 
@@ -52,6 +55,7 @@ async function addRolePrompt(db) {
     );
   });
 }
+
 // Query to add role
 async function addRole(db, roleTitle, roleSalary, roleDepId) {
   await db.promise().query(
@@ -60,11 +64,10 @@ VALUES
     (?,?,?)`,
     [roleTitle, roleSalary, roleDepId]
   );
-  prettyLog("Role added.");
+  logger.prettyLog("Role added.");
 }
 
-// Prompt questions to delete role
-
+// Prompt to delete role
 async function deleteRolePrompt(db) {
   const roleChoices = await getRoleChoices(db);
 
@@ -81,30 +84,11 @@ async function deleteRolePrompt(db) {
     await deleteRole(db, response.roleId);
   });
 }
+
 // Query to delete role
 async function deleteRole(db, roleId) {
   await db.promise().query(`DELETE from role where id = ?`, roleId);
-  prettyLog("Role deleted.");
-}
-
-// Function to display data in table
-function logAsTable(results) {
-  const table = new Table({
-    head: ["ID", "Title", "Department", "Salary"],
-    colWidths: [5, 30, 20, 20],
-  });
-
-  results.forEach((item) => {
-    table.push([item.id, item.title, item.dep_name, item.salary]);
-  });
-
-  console.log("\n" + table.toString() + "\n");
-}
-
-function prettyLog(message) {
-  console.log("\n\n===============");
-  console.log(message);
-  console.log("================\n\n");
+  logger.prettyLog("Role deleted.");
 }
 
 module.exports = {

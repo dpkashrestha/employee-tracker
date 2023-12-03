@@ -46,6 +46,7 @@ const mainQuestion = [
   },
 ]
 
+// Process user inputs and invoke necessary functionality
 async function processChoice(option) {
   if (option === "[Deparment] View All Departments") {
     await department.viewAll(db); // View all department
@@ -76,13 +77,15 @@ async function processChoice(option) {
   } else if (option === "[Deparment] View the total utilized budget of a department") {
     await department.viewTotalBudgetOfDepartmentPrompt(db); // View the total utilized budget of a department
   } else if (option === "***Quit***") {
-    console.log("Program ended."); // Quit Program
-    process.exit();
+    console.log("Program ended."); 
+    process.exit(); // Quit Program
   }
 
+  // Re-prompt the main questions again
   promptQuestion();
 }
 
+// Prompt the main question set
 function promptQuestion() {
   inquirer.prompt(mainQuestion).then((response) => {
     processChoice(response.option);
@@ -95,5 +98,5 @@ function init() {
   promptQuestion();
 }
 
-// Function call to initialize app
+// Program entry point
 init();

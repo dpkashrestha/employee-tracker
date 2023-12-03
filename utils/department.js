@@ -1,5 +1,5 @@
 const inquirer = require("inquirer");
-const Table = require("cli-table3");
+const logger = require("./logger.js");
 
 const departmentQuestions = [
   {
@@ -9,15 +9,18 @@ const departmentQuestions = [
   },
 ];
 
+// View all departments functionality
 async function viewAll(db) {
-  const [rows] = await db.promise().query("SELECT * FROM department");
-  logAsTable(rows);
+  const [rows, fields] = await db.promise().query("SELECT * FROM department");
+  logger.logAsTable(rows, fields);
 }
 
+// Function to build choice list for departments for list prompt choices
 async function getDepartmentChoices(db) {
   const [rows] = await db
     .promise()
     .query("SELECT id, dep_name FROM department");
+    
   // Map the database results to Inquirer choices format
   const choices = rows.map((item) => ({
     value: item.id,
@@ -40,11 +43,10 @@ async function addDep(db, depName) {
       (?)`,
     depName
   );
-  prettyLog("Department added.");
+  logger.prettyLog("Department added.");
 }
 
 // Prompt questions to delete Department
-
 async function deleteDepartmentPrompt(db) {
   const depChoices = await getDepartmentChoices(db);
 
@@ -66,10 +68,8 @@ async function deleteDepartment(db, department_Id) {
   await db
     .promise()
     .query(`DELETE from Department where id = ?`, department_Id);
-  prettyLog("Department deleted.");
+    logger.prettyLog("Department deleted.");
 }
-
-// Query to View the total utilized budget of a department
 
 async function viewTotalBudgetOfDepartmentPrompt(db) {
   const depChoices = await getDepartmentChoices(db);
@@ -89,47 +89,15 @@ async function viewTotalBudgetOfDepartmentPrompt(db) {
 }
 
 async function getTotalBudgetForDepartment(db, department_Id) {
+  // Query to View the total utilized budget of a department based on role salary and number of employees in the said role
   const queryString = `SELECT department.id, department.dep_name, sum(role.salary) as budget FROM department
   JOIN role ON role.department_id = department.id
   JOIN employee ON employee.role_id = role.id
   WHERE department.id = ?
   GROUP BY department.id`;
 
-  const [rows] = await db.promise().query(queryString, department_Id);
-  logTotalBudgetAsTable(rows);
-}
-
-function logTotalBudgetAsTable(results) {
-  const table = new Table({
-    head: ["ID", "Department Name", "Budget"],
-    colWidths: [5, 30, 20],
-  });
-
-  results.forEach((item) => {
-    table.push([item.id, item.dep_name, item.budget]);
-  });
-
-  console.log("\n" + table.toString() + "\n");
-}
-
-// Function to display data in table
-function logAsTable(results) {
-  const table = new Table({
-    head: ["ID", "Department Name"],
-    colWidths: [5, 30],
-  });
-
-  results.forEach((item) => {
-    table.push([item.id, item.dep_name]);
-  });
-
-  console.log("\n" + table.toString() + "\n");
-}
-
-function prettyLog(message) {
-  console.log("\n\n===============");
-  console.log(message);
-  console.log("================\n\n");
+  const [rows, fields] = await db.promise().query(queryString, department_Id);
+  logger.logAsTable(rows, fields);
 }
 
 module.exports = {

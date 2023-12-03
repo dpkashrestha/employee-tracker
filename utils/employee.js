@@ -1,8 +1,39 @@
 const inquirer = require("inquirer");
-const Table = require("cli-table3");
 const role = require("./role.js");
 const department = require("./department.js");
+const logger = require("./logger.js");
 
+// Function to build choice list for employees for prompt questions
+async function getEmployeeChoices(db) {
+  const queryString = `SELECT id, concat(first_name, ' ', last_name) as employeeName FROM employee`;
+
+  const [rows] = await db.promise().query(queryString);
+
+  // Map the database results to Inquirer choices format
+  const choices = rows.map((item) => ({
+    value: item.id,
+    name: item.employeeName,
+  }));
+
+  return choices;
+}
+
+// Function to build choice list for managers for prompt questions
+async function getManagerChoices(db) {
+  const queryString = `SELECT id, concat(first_name, ' ', last_name) as managerName FROM employee`;
+
+  const [rows] = await db.promise().query(queryString);
+
+  // Map the database results to Inquirer choices format
+  const choices = rows.map((item) => ({
+    value: item.id,
+    name: item.managerName,
+  }));
+
+  return choices;
+}
+
+// View all employees functionality
 async function viewAll(db) {
   const queryString = `
   SELECT
@@ -20,39 +51,11 @@ async function viewAll(db) {
     LEFT JOIN employee e2 ON e2.id = employee.manager_id
 `;
 
-  const [rows] = await db.promise().query(queryString);
-  logAsTable(rows);
+  const [rows, fields] = await db.promise().query(queryString);
+  logger.logAsTable(rows, fields);
 }
 
-async function getEmployeeChoices(db) {
-  const queryString = `SELECT id, concat(first_name, ' ', last_name) as employeeName FROM employee`;
-
-  const [rows] = await db.promise().query(queryString);
-
-  // Map the database results to Inquirer choices format
-  const choices = rows.map((item) => ({
-    value: item.id,
-    name: item.employeeName,
-  }));
-
-  return choices;
-}
-
-async function getManagerChoices(db) {
-  const queryString = `SELECT id, concat(first_name, ' ', last_name) as managerName FROM employee`;
-
-  const [rows] = await db.promise().query(queryString);
-
-  // Map the database results to Inquirer choices format
-  const choices = rows.map((item) => ({
-    value: item.id,
-    name: item.managerName,
-  }));
-
-  return choices;
-}
-
-// Prompt questions to add employee
+// Prompts to add employee
 async function addEmployeePrompt(db) {
   const managerChoices = await getEmployeeChoices(db);
 
@@ -113,10 +116,10 @@ async function addEmployee(
       [firstName, lastName, employeeRole, employeeManager]
     );
 
-  prettyLog("Employee added.");
+  logger.prettyLog("Employee added.");
 }
 
-// Prompt questions to update employee
+// Prompts to update employee
 async function updateEmployeeRolePrompt(db) {
   const employeeChoices = await getEmployeeChoices(db);
 
@@ -138,20 +141,20 @@ async function updateEmployeeRolePrompt(db) {
   ];
 
   await inquirer.prompt(updateEmployeeQuestions).then(async (response) => {
-    await updateEmployee(db, response.roleId, response.empId);
+    await updateEmployeeRole(db, response.roleId, response.empId);
   });
 }
 
-//Query to update employee
+// Query to update employee
 async function updateEmployeeRole(db, roleId, employeeId) {
   await db
     .promise()
     .query(`UPDATE employee SET role_id=? WHERE id = ?`, [roleId, employeeId]);
 
-  prettyLog("Employee Role updated.");
+  logger.prettyLog("Employee Role updated.");
 }
 
-// Prompt questions to update employee managers
+// Prompts to update employee's manager
 async function updateEmployeeManagerPrompt(db) {
   const employeeChoices = await getEmployeeChoices(db);
 
@@ -179,7 +182,7 @@ async function updateEmployeeManagerPrompt(db) {
     });
 }
 
-//Query to update employee's manager
+// Query to update employee's manager
 async function updateEmployeeManager(db, employeeId, managerId) {
   await db
     .promise()
@@ -187,10 +190,10 @@ async function updateEmployeeManager(db, employeeId, managerId) {
       managerId,
       employeeId,
     ]);
-  prettyLog("Employee Manager updated.");
+  logger.prettyLog("Employee Manager updated.");
 }
 
-// View employees by manager
+// Prompt to view employees by manager
 async function viewEmployeeByManagerPrompt(db) {
   const employeeChoices = await getEmployeeChoices(db);
 
@@ -210,6 +213,7 @@ async function viewEmployeeByManagerPrompt(db) {
     });
 }
 
+// Query to view employees by manager
 async function viewEmployeeByManager(db, managerId) {
   const queryString = `
       SELECT
@@ -229,11 +233,11 @@ async function viewEmployeeByManager(db, managerId) {
         employee.manager_id = ?
     `;
 
-  const [rows] = await db.promise().query(queryString, managerId);
-  logAsTable(rows);
+  const [rows, fields] = await db.promise().query(queryString, managerId);
+  logger.logAsTable(rows, fields);
 }
 
-// View employees by Department
+// Prompt to view employees by Department
 async function viewEmployeeByDepartmentPrompt(db) {
   const departmentChoices = await department.getDepartmentChoices(db);
 
@@ -251,6 +255,7 @@ async function viewEmployeeByDepartmentPrompt(db) {
   });
 }
 
+// Query to view employees by department
 async function viewEmployeeByDepartment(db, depId) {
   const queryString = `
       SELECT
@@ -270,12 +275,11 @@ async function viewEmployeeByDepartment(db, depId) {
         department.id = ?
     `;
 
-  const [rows] = await db.promise().query(queryString, depId);
-  logAsTable(rows);
+  const [rows, fields] = await db.promise().query(queryString, depId);
+  logger.logAsTable(rows, fields);
 }
 
-// Prompt questions to delete Employee
-
+// Prompt to delete Employee
 async function deleteEmployeePrompt(db) {
   const employeeChoices = await getEmployeeChoices(db);
 
@@ -292,46 +296,11 @@ async function deleteEmployeePrompt(db) {
     await deleteEmployee(db, response.employeeId);
   });
 }
+
 // Query to delete Employee
 async function deleteEmployee(db, empId) {
   await db.promise().query(`DELETE from Employee where id = ?`, empId);
-  prettyLog("Employee deleted.");
-}
-
-// Function to display data in the table
-function logAsTable(results) {
-  const table = new Table({
-    head: [
-      "ID",
-      "First Name",
-      "Last Name",
-      "Title",
-      "Department",
-      "Salary",
-      "Manager",
-    ],
-    colWidths: [5, 20, 20, 25, 20, 20, 30],
-  });
-
-  results.forEach((item) => {
-    table.push([
-      item.id,
-      item.first_name,
-      item.last_name,
-      item.title,
-      item.dep_name,
-      item.salary,
-      item.manager || "<Not Assigned>",
-    ]);
-  });
-
-  console.log("\n" + table.toString() + "\n");
-}
-
-function prettyLog(message) {
-  console.log("\n\n===============");
-  console.log(message);
-  console.log("================\n\n");
+  logger.prettyLog("Employee deleted.");
 }
 
 module.exports = {
